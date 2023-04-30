@@ -1,0 +1,114 @@
+//Task 4 Lab 5
+
+
+module Task4(
+				input CLOCK_50,
+        // input clk,
+				// input reset,
+				// input start,
+				input [2:0] SW,       //used to input the letter code eg A = 000
+				input [1:0] KEY,      //Key0 is asynchronous reset and key1 is to display the morse code
+				output [3:0] LEDR
+				);
+    assign  LEDR[3:1]=KEY;
+				
+    wire          clk;
+    wire          reset;
+    wire          short_out_enable;
+    wire [25:0]   slow_out;
+    wire [3:0]    symbol_out;
+    wire [3:0]    mask_out;
+    wire [3:0]    letter_shifted;
+    wire [3:0]    mask_shifted;
+    wire          do_shift;
+    wire [3:0]    count;
+    reg  [3:0]    count_reg;
+    wire [3:0]    preset_value;
+    wire          slow_counter_enable;    //comes from 3 bit counter
+    wire          count_complete;         //comes from slow counter
+    wire          stored_enable;          //comes from three bit counter
+    wire          start               ; 
+
+    assign clk   = CLOCK_50;
+    assign reset = KEY[0];
+    assign start = ~KEY[1];
+
+
+      //selecting among the eight letters 
+    symbol_select symbol_select_inst(
+                                  .in(SW[2:0]),
+                                  .symbol_out(symbol_out)
+    );
+
+    //selecting mask code for the specific letter 
+    mask_select mask_select_inst(
+                              .in(SW[2:0]),
+                              .mask_out(mask_out)
+    );
+
+    assign do_shift = (mask_shifted[0] && (count == 0) && stored_enable); 
+    //shift register for letters
+    shift_register shift_reg_inst1(
+                            .clk  (clk)           ,
+                            .reset(reset)         ,
+                            .ld   (start)         ,             // load new value
+                            .in   (symbol_out)    ,     
+                            .shift(do_shift)      ,          //when enable it wil do right shift
+                            .out  (letter_shifted)    
+    );
+
+    //shift register for mask code
+    shift_register shift_reg_inst2(
+                            .clk  (clk)           ,
+                            .reset(reset)         ,
+                            .ld   (start)         ,             // load new value
+                            .in   (mask_out)    ,     
+                            .shift(do_shift)      ,          //when enable it wil do right shift
+                            .out  (mask_shifted)    
+    );
+
+    //preselect the 3 bit counter value
+    preset_selector preset_selector_inst(
+                                      .in1(letter_shifted[0]),
+                                      .in2(mask_shifted[0]),
+                                      .count(count),                //input
+                                      .preset_value(preset_value)    //output
+    );
+
+    //3 bit counter 
+    three_bit_counter three_bit_counter_inst(
+                                          .clk(clk),
+                                          .reset(reset),
+                                          .preset_en    (count_reg == 0),
+                                          .preset_value(preset_value),
+                                          .enable(count_complete),          //comes from 0.5 seconds counter 
+                                          .count(count),                    //output
+                                          .out_enable(slow_counter_enable),
+                                          .stored_enable(stored_enable)
+    );
+
+
+    //registering the count value to provide 1 cycle delay to the preset_enable
+    always @ (posedge clk or negedge reset) begin
+      if(!reset)
+        count_reg <= 0;
+      else 
+        count_reg <= count;
+    end
+
+
+    //for 0.5 seconds display we should use 25000 000
+    counter slow_counter(
+                        .clk(clk), 
+                        .reset(reset),
+                        .enable(slow_counter_enable),
+                        .compare(25000000), //GENERATE 0.5 SECONDS DELAY
+                        .Q(slow_out),
+                        .out_enable(count_complete)            //goes in the enable of three bit counter  
+    );
+
+    
+    assign LEDR[0] = count > 4'd1;
+
+
+endmodule 
