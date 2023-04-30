@@ -1,0 +1,22 @@
+//this module will preset the value for the decrement 3 bit counter 
+
+module preset_selector (
+                      input         in1,        //LSB of letter code
+                      input         in2,        //LSB of mask code
+                      input   [3:0] count,      //3 bit counter output
+                      output reg  [3:0] preset_value  
+);
+    
+    always @(*) begin
+      
+      case ({in1,in2})
+      2'b00:         preset_value = 4'd0;             // mask zero 
+      2'b01:         preset_value = 4'd2;             // mask 1 and symbol zero
+      2'b10:         preset_value = 4'd0;             // mask zero 
+      2'b11:         preset_value = 4'd4;             // mask 1 and symbol 1
+      default:      preset_value = 4'd0;
+    endcase
+    
+      
+    end
+endmodule
