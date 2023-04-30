@@ -1,0 +1,33 @@
+//this is a 3 bit counter 
+
+module three_bit_counter (
+                        input             clk,
+                        input             reset,
+                        input [3:0]       preset_value,
+                        input             preset_en,
+                        input             enable,
+                        output reg [3:0]  count,
+                        output            out_enable,
+                        output reg        stored_enable
+);
+
+    always @(posedge clk or negedge reset) begin
+      if(!reset) begin
+        count <= 0;
+      end
+      else if (preset_en)
+        count <=  preset_value;
+      else if(enable)
+        count <= count -1;          //decrement counter
+       
+    end 
+
+    always @(posedge clk or negedge reset) begin
+      if (!reset) begin
+        stored_enable <= 0;
+      end
+      else
+        stored_enable <= enable;
+    end
+    assign  out_enable  =   count !=0;
+endmodule
